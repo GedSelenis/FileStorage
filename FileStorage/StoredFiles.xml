@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ArrayOfFileDetails xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+	<FileDetails>
+		<Id>4f502a0a-63d0-4b1f-9d1c-6c7556b98ea3</Id>
+		<fileName>Info.txt</fileName>
+		<filePath>C:\Users\Gediminas.Selenis\Downloads</filePath>
+	</FileDetails>
+	<FileDetails>
+		<Id>34459f57-061c-419d-9545-88ad5e926653</Id>
+		<fileName>Info1.txt</fileName>
+		<filePath>C:\Users\Gediminas.Selenis\Downloads</filePath>
+	</FileDetails>
+	<FileDetails>
+		<Id>49718623-4314-41e2-85fc-4ca9f25f6a0c</Id>
+		<fileName>Info3.txt</fileName>
+		<filePath>C:\Users\Gediminas.Selenis\Downloads</filePath>
+	</FileDetails>
+</ArrayOfFileDetails>
