@@ -120,7 +120,7 @@ namespace FileStorage.Services
             string oldFilePath = Path.Combine(fileDetails.FilePath, fileDetails.FileName);
             string newFilePath = Path.Combine(fileDetails.FilePath, fileRenameRequest.NewFileName);
             File.Move(oldFilePath, newFilePath);
-            _fileDetailsList.Remove(fileDetails);
+            _fileDetailsList.RemoveAll(file => file.Id == fileDetails.Id);
             fileDetails.FileName = fileRenameRequest.NewFileName;
             fileDetails.FilePath = fileDetails.FilePath;
             _fileDetailsList.Add(fileDetails);
