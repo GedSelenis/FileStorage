@@ -10,6 +10,7 @@ namespace FileStorage.Models.DTO
     { 
         public string FileName { get; set; }
         public string FilePath { get; set; }
+        public string VirtualFolder { get; set; }
         public FileAddRequest(string fileName, string filePath)
         {
             FileName = fileName;

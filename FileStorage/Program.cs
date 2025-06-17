@@ -1,11 +1,15 @@
 ﻿using FileStorage.Models;
-using System.Xml.Serialization;
-using FileStorage.Services;
 using FileStorage.Models.DTO;
+using FileStorage.Services;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Xml.Linq;
+using System.Xml.Serialization;
 
 
 IFileService fileService = new FileDetailsService();
-ChoseOption();
+await ChoseOption();
 void StartApplication()
 {
     Console.WriteLine("Welcome to the File Storage Application!");
@@ -15,26 +19,30 @@ void StartApplication()
     Console.WriteLine("3. Add Text to File");
 }
 
-void PrintCurrentFiles()
+async Task PrintCurrentFiles()
 {
-    Console.WriteLine("Current Files:");
-    List<FileResponse> files = fileService.ListFiles();
-    if (files.Count == 0)
+    HttpClient client = new HttpClient();
+    client.BaseAddress = new Uri("https://localhost:7261");
+    using StringContent jsonContent = new(
+        "",
+        Encoding.UTF8,
+        "application/json");
+    using HttpResponseMessage response = await client.PostAsync(
+        "API/Index",
+        jsonContent);
+    List<FileResponse> files = JsonSerializer.Deserialize<List<FileResponse>>(
+        await response.Content.ReadAsStringAsync(),
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<FileResponse>();
+
+    foreach (var file in files)
     {
-        Console.WriteLine("No files available.");
-    }
-    else
-    {
-        foreach (var file in files)
-        {
-            Console.WriteLine($"ID: {file.Id}, Name: {file.FileName}, Path: {file.FilePath}");
-        }
+        Console.WriteLine($"ID: {file.Id}, Name: {file.FileName}, Path: {file.FilePath}, VirtualFolder: {file.VirtualFolder}");
     }
 }
 
-void ChoseOption()
+async Task ChoseOption()
 {
-    PrintCurrentFiles();
+    await PrintCurrentFiles();
     Console.WriteLine("Please choose an option:");
     Console.WriteLine("1. Add File");
     Console.WriteLine("2. Rename File");
@@ -48,19 +56,23 @@ void ChoseOption()
         {
             case 1:
                 FileAddRequest fileAddRequest = InputAddRequest();
-                fileService.AddFile(fileAddRequest);
+                await SendAddFile(fileAddRequest);
+                //fileService.AddFile(fileAddRequest);
                 break;
             case 2:
                 FileRenameRequest fileRenameRequest = InputRenameRequest();
-                fileService.RenameFileAsync(fileRenameRequest);
+                await SendRenameFile(fileRenameRequest);
+                //fileService.RenameFileAsync(fileRenameRequest);
                 break;
             case 3:
                 FileAddTextToFileRequest fileAddTextToFileRequest = InputAddTextToFile();
-                fileService.AddTextToFileAsync(fileAddTextToFileRequest);
+                await SendAddTextToFile(fileAddTextToFileRequest);
+                //fileService.AddTextToFileAsync(fileAddTextToFileRequest);
                 break;
             case 4:
-                FileResponse fileResponse = GetFileDetails();
-                fileService.DeleteFile(fileResponse.Id);
+                Guid id = GetFileId();
+                await SendDeleteFile(id);
+                //fileService.DeleteFile(id);
                 break;
             case 5:
                 Console.WriteLine("Exiting the application. Goodbye!");
@@ -69,12 +81,12 @@ void ChoseOption()
                 Console.WriteLine("Invalid option. Please try again.");
                 break;
         }
-        ChoseOption();
+        await ChoseOption();
     }
     else
     {
         Console.WriteLine("Invalid input. Please enter a number between 1 and 4.");
-        ChoseOption();
+        await ChoseOption();
     }
 }
 
@@ -84,10 +96,13 @@ FileAddRequest InputAddRequest()
     string? fileName = Console.ReadLine();
     Console.WriteLine("Enter file path:");
     string? filePath = Console.ReadLine();
+    Console.WriteLine("Enter file virtual folder:");
+    string? virtualFolder = Console.ReadLine();
     return new FileAddRequest
     {
         FileName = fileName,
-        FilePath = filePath
+        FilePath = filePath,
+        VirtualFolder = virtualFolder
     };
 }
 
@@ -131,16 +146,111 @@ FileAddTextToFileRequest InputAddTextToFile()
     }
 }
 
-FileResponse GetFileDetails()
+Guid GetFileId()
 {
     Console.WriteLine("Enter file ID to get details:");
     string? fileIdInput = Console.ReadLine();
     if (Guid.TryParse(fileIdInput, out Guid fileId))
     {
-        return fileService.GetFileDetails(fileId);
+        return fileId;
     }
     else
     {
         throw new ArgumentException("Invalid file ID format.");
+    }
+
+}
+
+async Task SendAddFile(FileAddRequest fileAddRequest)
+{
+    HttpClient client = new HttpClient();
+    client.BaseAddress = new Uri("https://localhost:7261");
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("FileName", fileAddRequest.FileName),
+        new KeyValuePair<string, string>("FilePath", fileAddRequest.FilePath),
+        new KeyValuePair<string, string>("VirtualFolder", fileAddRequest.VirtualFolder)
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        "API/AddFile",
+        formContent);
+
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"File added successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error adding file: {response.ReasonPhrase}");
+    }
+}
+
+async Task SendRenameFile(FileRenameRequest fileRenameRequest)
+{
+    HttpClient client = new HttpClient();
+    client.BaseAddress = new Uri("https://localhost:7261");
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("NewFileName", fileRenameRequest.NewFileName)
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        $"API/Rename/{fileRenameRequest.Id}",
+        formContent);
+
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"File added successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error adding file: {response.ReasonPhrase}");
+    }
+}
+
+async Task SendAddTextToFile(FileAddTextToFileRequest fileTextToAddRequest)
+{
+    HttpClient client = new HttpClient();
+    client.BaseAddress = new Uri("https://localhost:7261");
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("TextToAdd", fileTextToAddRequest.TextToAdd)
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        $"API/AddText/{fileTextToAddRequest.Id}",
+        formContent);
+
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"File added successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error adding file: {response.ReasonPhrase}");
+    }
+}
+
+async Task SendDeleteFile(Guid id)
+{
+    HttpClient client = new HttpClient();
+    client.BaseAddress = new Uri("https://localhost:7261");
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("Id", id.ToString())
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        $"API/delete/{id}",
+        formContent);
+
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"File added successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error adding file: {response.ReasonPhrase}");
     }
 }

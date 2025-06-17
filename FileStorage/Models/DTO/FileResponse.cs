@@ -11,6 +11,7 @@ namespace FileStorage.Models.DTO
         public Guid Id { get; set; }
         public string FileName { get; set; }
         public string FilePath { get; set; }
+        public string VirtualFolder { get; set; }
         public FileResponse()
         {
             FileName = string.Empty;
