@@ -66,8 +66,11 @@ async Task ChoseOption()
     Console.WriteLine("2. Rename File");
     Console.WriteLine("3. Add Text to File");
     Console.WriteLine("4. Delete file");
-    Console.WriteLine("5. Move file to folder");
+    Console.WriteLine("5. Move file to folder"); // Form here
     Console.WriteLine("6. Add folder");
+    Console.WriteLine("7. Delete folder");
+    Console.WriteLine("8. Update folder");
+    Console.WriteLine("9. Move folder to another folder");
     Console.WriteLine("10. Exit");
     String? input = Console.ReadLine();
     if (int.TryParse(input, out int option))
@@ -77,22 +80,38 @@ async Task ChoseOption()
             case 1:
                 FileAddRequest fileAddRequest = InputAddRequest();
                 await SendAddFile(fileAddRequest);
-                //fileService.AddFile(fileAddRequest);
                 break;
             case 2:
                 FileRenameRequest fileRenameRequest = InputRenameRequest();
                 await SendRenameFile(fileRenameRequest);
-                //fileService.RenameFileAsync(fileRenameRequest);
                 break;
             case 3:
                 FileAddTextToFileRequest fileAddTextToFileRequest = InputAddTextToFile();
                 await SendAddTextToFile(fileAddTextToFileRequest);
-                //fileService.AddTextToFileAsync(fileAddTextToFileRequest);
                 break;
             case 4:
                 Guid id = GetFileId();
                 await SendDeleteFile(id);
-                //fileService.DeleteFile(id);
+                break;
+            case 5:
+                FileToFolderRequest fileToFolderRequest = InputFileToFolderRequest();
+                await SendMoveFileToFolder(fileToFolderRequest);
+                break;
+            case 6:
+                FolderAddRequest folderAddRequest = InputFolderAddRequest();
+                await SendAddFolder(folderAddRequest);
+                break;
+            case 7:
+                Guid folderID = GetFolderId();
+                await SendDeleteFolder(folderID);
+                break;
+            case 8:
+                FolderUpdateRequest folderUpdateRequest = InputFolderUpdateRequest();
+                await SendUpdateFolder(folderUpdateRequest);
+                break;
+            case 9:
+                FolderToFolderRequest folderToFolderRequest = InputFolderToFolderRequest();
+                await SendMoveFolderToAnotherFolder(folderToFolderRequest);
                 break;
             case 10:
                 Console.WriteLine("Exiting the application. Goodbye!");
@@ -192,9 +211,97 @@ Guid GetFileId()
     }
 
 }
+
+FileToFolderRequest InputFileToFolderRequest()
+{
+    Console.WriteLine("Enter file id:");
+    string? fileIdInput = Console.ReadLine();
+    Console.WriteLine("Enter folder id:");
+    string? folderIdInput = Console.ReadLine();
+    if (Guid.TryParse(folderIdInput, out Guid FolderId) && Guid.TryParse(fileIdInput, out Guid fileID))
+    {
+        Console.WriteLine("Enter new file name:");
+        string? newFileName = Console.ReadLine();
+        return new FileToFolderRequest
+        {
+            Id = fileID,
+            VirualFolderId = FolderId
+        };
+    }
+    else
+    {
+        throw new ArgumentException("Invalid file ID format.");
+    }
+}
+
 #endregion
 
 #region Inputs for folder operations
+
+FolderAddRequest InputFolderAddRequest()
+{
+    Console.WriteLine("Enter file name:");
+    string? FolderName = Console.ReadLine();
+    return new FolderAddRequest
+    {
+        FolderName = FolderName
+    };
+}
+
+FolderUpdateRequest InputFolderUpdateRequest()
+{
+    Console.WriteLine("Enter folder ID to update:");
+    string? folderIdInput = Console.ReadLine();
+    if (Guid.TryParse(folderIdInput, out Guid folderId))
+    {
+        Console.WriteLine("Enter new folder name:");
+        string? newFolderName = Console.ReadLine();
+        return new FolderUpdateRequest
+        {
+            Id = folderId,
+            FolderName = newFolderName
+        };
+    }
+    else
+    {
+        throw new ArgumentException("Invalid folder ID format.");
+    }
+}
+
+FolderToFolderRequest InputFolderToFolderRequest()
+{
+    Console.WriteLine("Enter folder ID to move:");
+    string? folderIdInput = Console.ReadLine();
+    Console.WriteLine("Enter new parent folder ID:");
+    string? parentFolderIdInput = Console.ReadLine();
+    if (Guid.TryParse(folderIdInput, out Guid folderId) && Guid.TryParse(parentFolderIdInput, out Guid parentFolderId))
+    {
+        return new FolderToFolderRequest
+        {
+            Id = folderId,
+            ParentFolderId = parentFolderId
+        };
+    }
+    else
+    {
+        throw new ArgumentException("Invalid folder ID format.");
+    }
+}
+
+Guid GetFolderId()
+{
+    Console.WriteLine("Enter file ID to get details:");
+    string? folderIdInput = Console.ReadLine();
+    if (Guid.TryParse(folderIdInput, out Guid fileId))
+    {
+        return fileId;
+    }
+    else
+    {
+        throw new ArgumentException("Invalid file ID format.");
+    }
+
+}
 
 #endregion
 
@@ -287,4 +394,112 @@ async Task SendDeleteFile(Guid id)
         Console.WriteLine($"Error adding file: {response.ReasonPhrase}");
     }
 }
+
+async Task SendMoveFileToFolder(FileToFolderRequest fileToFolderRequest)
+{
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("VirualFolderId", fileToFolderRequest.VirualFolderId.ToString()),
+        new KeyValuePair<string, string>("Id", fileToFolderRequest.Id.ToString())
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        $"API/MoveToFolder",
+        formContent);
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"File moved successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error moving file: {response.ReasonPhrase}");
+    }
+}
+
+#endregion
+
+#region Calls for folder operations
+
+async Task SendAddFolder(FolderAddRequest folderAddRequest)
+{
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("FolderName", folderAddRequest.FolderName)
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        "API/AddFolder",
+        formContent);
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Folder added successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error adding folder: {response.ReasonPhrase}");
+    }
+}
+
+async Task SendDeleteFolder(Guid id)
+{
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("Id", id.ToString())
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        $"API/DeleteFolder/{id}",
+        formContent);
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Folder deleted successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error deleting folder: {response.ReasonPhrase}");
+    }
+}
+
+async Task SendUpdateFolder(FolderUpdateRequest folderUpdateRequest)
+{
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("FolderName", folderUpdateRequest.FolderName),
+        new KeyValuePair<string, string>("Id", folderUpdateRequest.Id.ToString())
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        $"API/UpdateFolder",
+        formContent);
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Folder updated successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error updating folder: {response.ReasonPhrase}");
+    }
+}
+
+async Task SendMoveFolderToAnotherFolder(FolderToFolderRequest folderToFolderRequest)
+{
+    var formContent = new FormUrlEncodedContent(new[]
+        {
+        new KeyValuePair<string, string>("ParentFolderId", folderToFolderRequest.ParentFolderId.ToString()),
+        new KeyValuePair<string, string>("Id", folderToFolderRequest.Id.ToString())
+        });
+    using HttpResponseMessage response = await client.PostAsync(
+        $"API/MoveFolderToFolder",
+        formContent);
+    if (response.IsSuccessStatusCode)
+    {
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Console.WriteLine($"Folder moved successfully: {responseBody}");
+    }
+    else
+    {
+        Console.WriteLine($"Error moving folder: {response.ReasonPhrase}");
+    }
+}
+
 #endregion
