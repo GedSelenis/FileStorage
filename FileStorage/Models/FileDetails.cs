@@ -11,11 +11,13 @@ namespace FileStorage.Models
         public Guid Id { get; set; }
         public string FileName { get; set; }
         public string FilePath { get; set; }
+        public Guid? VirualFolderId { get; set; }
 
-        public FileDetails(string fileName, string filePath)
+        public FileDetails(string fileName, string filePath, Guid virualFolder)
         {
             this.FileName = fileName;
             this.FilePath = filePath;
+            this.VirualFolderId = virualFolder;
             this.Id = Guid.NewGuid();
         }
         public FileDetails(Guid id, string fileName, string filePath)
@@ -23,6 +25,13 @@ namespace FileStorage.Models
             this.FileName = fileName;
             this.FilePath = filePath;
             this.Id = id;
+        }
+        public FileDetails(Guid id, string fileName, string filePath, Guid virualFolder)
+        {
+            this.FileName = fileName;
+            this.FilePath = filePath;
+            this.Id = id;
+            this.VirualFolderId = virualFolder;
         }
         public FileDetails()
         {

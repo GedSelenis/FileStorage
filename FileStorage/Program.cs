@@ -1,6 +1,5 @@
 ﻿using FileStorage.Models;
 using FileStorage.Models.DTO;
-using FileStorage.Services;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -8,21 +7,18 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 
 
-IFileService fileService = new FileDetailsService();
-await ChoseOption();
-void StartApplication()
+HttpClient client = new HttpClient();
+client.BaseAddress = new Uri("https://localhost:7261");
+
+await StartApplication();
+async Task StartApplication()
 {
     Console.WriteLine("Welcome to the File Storage Application!");
-    Console.WriteLine("Please choose an option:");
-    Console.WriteLine("1. Add File");
-    Console.WriteLine("2. Rename File");
-    Console.WriteLine("3. Add Text to File");
+    await ChoseOption();
 }
 
 async Task PrintCurrentFiles()
 {
-    HttpClient client = new HttpClient();
-    client.BaseAddress = new Uri("https://localhost:7261");
     using StringContent jsonContent = new(
         "",
         Encoding.UTF8,
@@ -34,21 +30,45 @@ async Task PrintCurrentFiles()
         await response.Content.ReadAsStringAsync(),
         new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<FileResponse>();
 
+    Console.WriteLine("Current Files:\n");
     foreach (var file in files)
     {
-        Console.WriteLine($"ID: {file.Id}, Name: {file.FileName}, Path: {file.FilePath}, VirtualFolder: {file.VirtualFolder}");
+        Console.WriteLine($"ID: {file.Id}, Name: {file.FileName}, Path: {file.FilePath}, VirtualFolder: {file.VirualFolderName}");
+    }
+}
+
+async Task PrintCurrentFolders()
+{
+    using StringContent jsonContent = new(
+        "",
+        Encoding.UTF8,
+        "application/json");
+    using HttpResponseMessage response = await client.PostAsync(
+        "API/FolderIndex",
+        jsonContent);
+    List<FolderResponse> folders = JsonSerializer.Deserialize<List<FolderResponse>>(
+        await response.Content.ReadAsStringAsync(),
+        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<FolderResponse>();
+
+    Console.WriteLine("Current Folders:\n");
+    foreach (var folder in folders)
+    {
+        Console.WriteLine($"ID: {folder.Id}, Name: {folder.FolderName}, Folder path: {folder.VirtualPath}");
     }
 }
 
 async Task ChoseOption()
 {
     await PrintCurrentFiles();
+    await PrintCurrentFolders();
     Console.WriteLine("Please choose an option:");
     Console.WriteLine("1. Add File");
     Console.WriteLine("2. Rename File");
     Console.WriteLine("3. Add Text to File");
     Console.WriteLine("4. Delete file");
-    Console.WriteLine("5. Exit");
+    Console.WriteLine("5. Move file to folder");
+    Console.WriteLine("6. Add folder");
+    Console.WriteLine("10. Exit");
     String? input = Console.ReadLine();
     if (int.TryParse(input, out int option))
     {
@@ -74,7 +94,7 @@ async Task ChoseOption()
                 await SendDeleteFile(id);
                 //fileService.DeleteFile(id);
                 break;
-            case 5:
+            case 10:
                 Console.WriteLine("Exiting the application. Goodbye!");
                 return;
             default:
@@ -90,6 +110,9 @@ async Task ChoseOption()
     }
 }
 
+// Inpusts
+
+#region Inputs for file operations
 FileAddRequest InputAddRequest()
 {
     Console.WriteLine("Enter file name:");
@@ -98,12 +121,21 @@ FileAddRequest InputAddRequest()
     string? filePath = Console.ReadLine();
     Console.WriteLine("Enter file virtual folder:");
     string? virtualFolder = Console.ReadLine();
-    return new FileAddRequest
+    if (Guid.TryParse(virtualFolder, out Guid FolderId))
     {
-        FileName = fileName,
-        FilePath = filePath,
-        VirtualFolder = virtualFolder
-    };
+        Console.WriteLine("Enter new file name:");
+        string? newFileName = Console.ReadLine();
+        return new FileAddRequest
+        {
+            FileName = fileName,
+            FilePath = filePath,
+            VirualFolderId = FolderId
+        };
+    }
+    else
+    {
+        throw new ArgumentException("Invalid file ID format.");
+    }
 }
 
 FileRenameRequest InputRenameRequest()
@@ -160,16 +192,23 @@ Guid GetFileId()
     }
 
 }
+#endregion
+
+#region Inputs for folder operations
+
+#endregion
+
+// API calls
+
+#region Calls for file operations
 
 async Task SendAddFile(FileAddRequest fileAddRequest)
 {
-    HttpClient client = new HttpClient();
-    client.BaseAddress = new Uri("https://localhost:7261");
     var formContent = new FormUrlEncodedContent(new[]
         {
         new KeyValuePair<string, string>("FileName", fileAddRequest.FileName),
         new KeyValuePair<string, string>("FilePath", fileAddRequest.FilePath),
-        new KeyValuePair<string, string>("VirtualFolder", fileAddRequest.VirtualFolder)
+        new KeyValuePair<string, string>("VirualFolderId", fileAddRequest.VirualFolderId.ToString())
         });
     using HttpResponseMessage response = await client.PostAsync(
         "API/AddFile",
@@ -188,8 +227,6 @@ async Task SendAddFile(FileAddRequest fileAddRequest)
 
 async Task SendRenameFile(FileRenameRequest fileRenameRequest)
 {
-    HttpClient client = new HttpClient();
-    client.BaseAddress = new Uri("https://localhost:7261");
     var formContent = new FormUrlEncodedContent(new[]
         {
         new KeyValuePair<string, string>("NewFileName", fileRenameRequest.NewFileName)
@@ -211,8 +248,6 @@ async Task SendRenameFile(FileRenameRequest fileRenameRequest)
 
 async Task SendAddTextToFile(FileAddTextToFileRequest fileTextToAddRequest)
 {
-    HttpClient client = new HttpClient();
-    client.BaseAddress = new Uri("https://localhost:7261");
     var formContent = new FormUrlEncodedContent(new[]
         {
         new KeyValuePair<string, string>("TextToAdd", fileTextToAddRequest.TextToAdd)
@@ -234,8 +269,6 @@ async Task SendAddTextToFile(FileAddTextToFileRequest fileTextToAddRequest)
 
 async Task SendDeleteFile(Guid id)
 {
-    HttpClient client = new HttpClient();
-    client.BaseAddress = new Uri("https://localhost:7261");
     var formContent = new FormUrlEncodedContent(new[]
         {
         new KeyValuePair<string, string>("Id", id.ToString())
@@ -254,3 +287,4 @@ async Task SendDeleteFile(Guid id)
         Console.WriteLine($"Error adding file: {response.ReasonPhrase}");
     }
 }
+#endregion
