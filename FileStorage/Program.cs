@@ -220,8 +220,6 @@ FileToFolderRequest InputFileToFolderRequest()
     string? folderIdInput = Console.ReadLine();
     if (Guid.TryParse(folderIdInput, out Guid FolderId) && Guid.TryParse(fileIdInput, out Guid fileID))
     {
-        Console.WriteLine("Enter new file name:");
-        string? newFileName = Console.ReadLine();
         return new FileToFolderRequest
         {
             Id = fileID,
@@ -240,7 +238,7 @@ FileToFolderRequest InputFileToFolderRequest()
 
 FolderAddRequest InputFolderAddRequest()
 {
-    Console.WriteLine("Enter file name:");
+    Console.WriteLine("Enter folder name:");
     string? FolderName = Console.ReadLine();
     return new FolderAddRequest
     {
